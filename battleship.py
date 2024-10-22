@@ -75,20 +75,24 @@ ______       _   _   _           _     _\n\
 
 
     # creating user and battle field
-    user_table = Table(title="Your ships", expand=True, width=41, box=box.SIMPLE_HEAD)
+    user_table = Table(title="Your ships", expand=True, width=46, box=box.SIMPLE_HEAD)
+    # adding empyy column head
+    user_table.add_column(no_wrap=True, justify="center")
     for i in range(0, 10):
+        # 65 is when unicode for capital english alphbet starts
         user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
     for i in range(0, 11):
-        user_table.add_row("-","-","-","-","-","-","-","-","-","-")
+        user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
     
     # creating enemy battle field
-    enemy_table = Table(title="Enemy ships", expand=True, width=41, box=box.SIMPLE_HEAD)
-    # SIMPLE_HEAD
+    enemy_table = Table(title="Enemy ships", expand=True, width=46, box=box.SIMPLE_HEAD)
+    # adding empyy column head
+    enemy_table.add_column(no_wrap=True, justify="center")
     for i in range(0, 10):
         # 65 is when unicode for capital english alphbet starts
         enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
     for i in range(0, 11):
-        enemy_table.add_row("-",Text("-", style="blink red"),"-","-","-","-","-","-","-","-")
+        enemy_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
 
     final_table = Columns([user_table, enemy_table], padding=(0,10,0,10))
     print(final_table)
