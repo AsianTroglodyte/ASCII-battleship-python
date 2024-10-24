@@ -6,8 +6,7 @@ required dependencies:
 - rich: for making the terminal prettier
 
 Why python?
-- wanted to focus more time on developing http protocol. So, I picked an easy language, with plenty of tools
-- the tools allowed me to focus more on developing http protocol.
+wanted to focus more time on developing http protocol. So, I picked an easy language with plenty of tools
 
 This uses the python "keyboard" library. 
 Why?:

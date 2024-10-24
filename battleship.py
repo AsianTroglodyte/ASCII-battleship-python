@@ -3,10 +3,11 @@ import sys
 import keyboard
 import threading
 from rich.table import Table
-from rich.console import Console 
+from rich.console import Console, Group 
 from rich.columns import Columns
-from rich.style import Style
-from rich.text import Text
+from rich.live import Live
+from rich.prompt import Prompt
+from rich.panel import Panel
 from rich import box, print
 
 
@@ -27,40 +28,53 @@ def keyboard_listener():
             sys.exit(0)
 
 
-# naturally must be nonblocking
-# def run_animation():
-#     animation = "|/-\\"
-#     start_time = time.time()
-#     while True:
-#         for i in range(4):
-#             time.sleep(0.1)
-#             sys.stdout.write("\r" + animation[i % len(animation)])
-#             sys.stdout.flush()
-#             if (exit_flag == True):
-#                 sys.exit(0)
+
+def generate_user_table() -> Table:
+    # creating user and battle field
+    user_table = Table(title="YOUR SHIPS", title_style="bold", expand=True, width=46, box=None)
+    # adding empyy column head
+    user_table.add_column(no_wrap=True, justify="center")
+    for i in range(0, 10):
+        # 65 is when unicode for capital english alphbet starts
+        user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    for i in range(0, 11):
+        user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
+
+    enemy_table = Table(title="ENEMY SHIPS", title_style="bold", expand=True, width=46, box=None)
+    # adding empyy column head
+    enemy_table.add_column(no_wrap=True, justify="center")
+    for i in range(0, 10):
+        # 65 is when unicode for capital english alphbet starts
+        enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    for i in range(0, 11):
+        enemy_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
+
+def update_display() -> Table:
+    # creating user and battle field
+    user_table = Table(title="YOUR SHIPS", title_style="bold", expand=True, width=46, box=None)
+    # adding empyy column head
+    user_table.add_column(no_wrap=True, justify="center")
+    for i in range(0, 10):
+        # 65 is when unicode for capital english alphbet starts
+        user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    for i in range(0, 11):
+        user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
+
+    enemy_table = Table(title="ENEMY SHIPS", title_style="bold", expand=True, width=46, box=None)
+    # adding empyy column head
+    enemy_table.add_column(no_wrap=True, justify="center")
+    for i in range(0, 10):
+        # 65 is when unicode for capital english alphbet starts
+        enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    for i in range(0, 11):
+        enemy_table.add_row(f"{i + 1}", "0","0","0","0","0","0","0","0","0","0")
+
+    new_final_table = Columns([user_table, enemy_table],padding=(0,5,0,5))
+    return new_final_table
 
 
 # main function
 if __name__ == "__main__":
-    # printing title of game 
-    sys.stdout.write("\
-______       _   _   _           _     _\n\
-| ___ \     | | | | | |         | |   (_)\n\
-| |_/ / __ _| |_| |_| | ___  ___| |__  _ _ __  \n\
-| ___ \/ _` | __| __| |/ _ \/ __| '_ \| | '_ \ \n\
-| |_/ / (_| | |_| |_| |  __/\__ \ | | | | |_) |\n\
-\____/ \__,_|\__|\__|_|\___||___/_| |_|_| .__/\n\
-                                        | |\n\
-                                        |_|\n\n")
-
-    # start animation thread
-    # run_animation_thread = threading.Thread(target=run_animation)
-    # run_animation_thread.daemon = True
-    # run_animation_thread.start()
-    
-    # start keyboard listener thread
-    keyboard_listener_thread = threading.Thread(target=keyboard_listener)
-    keyboard_listener_thread.start()
 
     # Prompt the user without a newline
     sys.stdout.write("Enter your username: ")
@@ -73,33 +87,60 @@ ______       _   _   _           _     _\n\
     sys.stdout.write("\rHello, " + username + "! Welcome!\n\n")
     sys.stdout.flush()
 
+    # printing title of game 
+    sys.stdout.write("\
+______       _   _   _           _     _\n\
+| ___ \     | | | | | |         | |   (_)\n\
+| |_/ / __ _| |_| |_| | ___  ___| |__  _ _ __  \n\
+| ___ \/ _` | __| __| |/ _ \/ __| '_ \| | '_ \ \n\
+| |_/ / (_| | |_| |_| |  __/\__ \ | | | | |_) |\n\
+\____/ \__,_|\__|\__|_|\___||___/_| |_|_| .__/\n\
+                                        | |\n\
+                                        |_|\n\n")
+    sys.stdout.flush()
 
-    # creating user and battle field
-    user_table = Table(title="Your ships", expand=True, width=46, box=box.SIMPLE_HEAD)
-    # adding empyy column head
-    user_table.add_column(no_wrap=True, justify="center")
-    for i in range(0, 10):
-        # 65 is when unicode for capital english alphbet starts
-        user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
-    for i in range(0, 11):
-        user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
-    
-    # creating enemy battle field
-    enemy_table = Table(title="Enemy ships", expand=True, width=46, box=box.SIMPLE_HEAD)
-    # adding empyy column head
-    enemy_table.add_column(no_wrap=True, justify="center")
-    for i in range(0, 10):
-        # 65 is when unicode for capital english alphbet starts
-        enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
-    for i in range(0, 11):
-        enemy_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
+    # # creating user and battle field
+    # user_table = Table(title="YOUR SHIPS", title_style="bold", expand=True, width=45, box=None)
+    # # adding empyy column head
+    # user_table.add_column(no_wrap=True, justify="center")
+    # for i in range(0, 10):
+    #     # 65 is when unicode for capital english alphbet starts
+    #     user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    # for i in range(0, 10):
+    #     user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
 
-    final_table = Columns([user_table, enemy_table], padding=(0,10,0,10))
-    print(final_table)
+    # enemy_table = Table(title="ENEMY SHIPS", title_style="bold", expand=True, width=45, box=None)
+    # # adding empyy column head
+    # enemy_table.add_column(no_wrap=True, justify="center")
+    # for i in range(0, 10):
+    #     # 65 is when unicode for capital english alphbet starts
+    #     enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
+    # for i in range(0, 10):
+    #     enemy_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
 
+    # final_table = Columns([user_table, enemy_table], padding=(0,5,0,5))
+
+    # panel_group = Group(
+    #     final_table,
+    #     Panel("Hello\nHello\nHello",  title="text panel", width=93, padding=(1,1,1,1)),
+    # )
+
+
+    # # keyboard_listener()
+    # console = Console()
+    # user_input_buffer = "+"
+    # sys.stdout.write(user_input_buffer)
+    # with Live(panel_group, auto_refresh=False) as live:
+    #     while True:
+    #         sys.stdout.write("\x1b[20B")
+    #         sys.stdout.flush()
+    #         if (user_input_buffer == "bruh"):
+    #             print("\nx pressed")
+    #             live.update(update_display())
+    #             exit_flag = True
+    #             sys.exit(0)
 
     # wait for keyboard_listener_thread to finish (when x for exit is pressed)
-    keyboard_listener_thread.join()
 
     sys.stdout.write("\nExiting!")
     sys.stdout.flush()
