@@ -57,50 +57,99 @@ ______       _   _   _           _     _\n\
     # run_animation_thread = threading.Thread(target=run_animation)
     # run_animation_thread.daemon = True
     # run_animation_thread.start()
-    
-    # start keyboard listener thread
-    keyboard_listener_thread = threading.Thread(target=keyboard_listener)
-    keyboard_listener_thread.start()
 
-    # Prompt the user without a newline
-    sys.stdout.write("Enter your username: ")
-    sys.stdout.flush()
-
-    # Read user input and remove the newline character
-    username = sys.stdin.readline().replace("\n", "").replace("\r", "")  # Remove both newlines
-
-    # Overwrite the line with a greeting
-    sys.stdout.write("\rHello, " + username + "! Welcome!\n\n")
+    # Tables' Titles
+    sys.stdout.write("\u001b[1m            Your Board")
+    sys.stdout.write("                          ")
+    sys.stdout.write("Enemy Board\u001b[0m\n")
     sys.stdout.flush()
 
 
-    # creating user and battle field
-    user_table = Table(title="Your ships", expand=True, width=46, box=box.SIMPLE_HEAD)
-    # adding empyy column head
-    user_table.add_column(no_wrap=True, justify="center")
+    # Table Column Headers
+    sys.stdout.write("  ")
+    for i in range(0, 2):
+        for j in range(0, 10):
+            # 65 when unicode for capital eng alphabet starts.abs
+            # concatenating with beginning of ANSI esc code for bold strings (kinda hacky) 
+            sys.stdout.write("  \u001b[1m" + chr(65 + j))
+        sys.stdout.write(" " * 6)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+    # Table Body + Table Row Headers
     for i in range(0, 10):
-        # 65 is when unicode for capital english alphbet starts
-        user_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
-    for i in range(0, 11):
-        user_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
-    
-    # creating enemy battle field
-    enemy_table = Table(title="Enemy ships", expand=True, width=46, box=box.SIMPLE_HEAD)
-    # adding empyy column head
-    enemy_table.add_column(no_wrap=True, justify="center")
-    for i in range(0, 10):
-        # 65 is when unicode for capital english alphbet starts
-        enemy_table.add_column(ratio=1, header=chr(65 + i), no_wrap=True, justify="center")
-    for i in range(0, 11):
-        enemy_table.add_row(f"{i + 1}", "-","-","-","-","-","-","-","-","-","-")
+        if (i < 9):
+            # User table
+            sys.stdout.write(f"\u001b[1m{i + 1}\u001b[0m   -  -  -  -  -  -  -  -  -  -")
+            sys.stdout.write(" " * 4)
+            # enemy table
+            sys.stdout.write(f"\u001b[1m{i + 1}\u001b[0m   -  -  -  -  -  -  -  -  -  -\n")
+        else:
+            # User table
+            sys.stdout.write(f"\u001b[1m{i + 1}\u001b[0m  -  -  -  -  -  -  -  -  -  -")
+            sys.stdout.write(" " * 4)
+            # enemy table
+            sys.stdout.write(f"\u001b[1m{i + 1}\u001b[0m  -  -  -  -  -  -  -  -  -  -\n")
+    # moving cursor further down
+    sys.stdout.write("\n")
+    sys.stdout.flush()
 
-    final_table = Columns([user_table, enemy_table], padding=(0,10,0,10))
-    print(final_table)
+    # generating state for user board. NOTE user position unknown to enemy and vice versa
+    user_board = [["-" for i in range(0,10)] for i in range(0,10)]
+    # generating state for enemy board. NOTE enemy position unknown to user and vice versa
+    enemy_board = [["-" for i in range(0,10)] for i in range(0,10)]
 
+    USER_PROMPT_ROW = 19
+    USER_PROMPT_COLUMN = 20
 
-    # wait for keyboard_listener_thread to finish (when x for exit is pressed)
-    keyboard_listener_thread.join()
+    # origin is considered top left most item
+    USER_BOARD_ORIGIN_ROW = 8
+    USER_BOARD_ORIGIN_COLUMN = 5
 
+    ENEMY_BOARD_ORIGIN_ROW = 8
+    ENEMY_BOARD_ORIGIN_COLUMN = 41
+
+    COLUMN_OFFSET = 2
+    ROW_OFFSET = 1
+
+    ships_placed = False
+    ship_classes = {"Carrier": 5, "Battleship": 4, "Destroyer": 3, "Submarine": 3, "Patrol Boat": 2}
+
+    # Prompting user input
+    while True:
+        if (not ships_placed):
+            # taking and trimming input
+            instruction = sys.stdin.readline().replace("\n", "")
+            instruction = instruction.replace("\r", "")
+            
+            # clearing previous prompt and user input with white space
+            sys.stdout.write("\r\u001b[1A\u001b[2K")
+            sys.stdout.flush()
+        elif (ships_placed):
+            # taking and trimming input
+            instruction = sys.stdin.readline().replace("\n", "")
+            instruction = instruction.replace("\r", "")
+            
+            # clearing previous prompt and user input with white space
+            sys.stdout.write("\r\u001b[1A\u001b[2K")
+            sys.stdout.flush()
+
+            # processing input
+            if (instruction == "x"):
+                break
+            
+            elif (instruction == "user"):
+                sys.stdout.write(f"\u001b[{USER_BOARD_ORIGIN_ROW};{USER_BOARD_ORIGIN_COLUMN}H0")
+                # moving cursor back to user prompt location
+                sys.stdout.write(f"\u001b[{USER_PROMPT_ROW};{USER_PROMPT_COLUMN}H")
+            elif (instruction == "enemy"):
+                # moving position to 
+                sys.stdout.write(f"\u001b[{ENEMY_BOARD_ORIGIN_ROW};{ENEMY_BOARD_ORIGIN_COLUMN}H0")
+                # moving cursor back to user prompt location
+                sys.stdout.write(f"\u001b[{USER_PROMPT_ROW};{USER_PROMPT_COLUMN}H")
+            # get user input for board
+            
+    # exiting
     sys.stdout.write("\nExiting!")
     sys.stdout.flush()
     sys.exit(0)
