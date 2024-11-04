@@ -8,20 +8,59 @@ import re
 exit_flag = False
 lock = threading.Lock()
 
-# naturally must be nonblocking
+# this creates a hover effect where the ship blinks over the would-be area.
+# we first generate the row or rows of text of associated with animation frame and then cycle through them.
+# Naturally, it is non-blocking 
 def run_hover_animation(row: int, col: int, ship: str, length: int, orientation: str):
-    animation_frames = (" - " * length) + (" 0 " * length)
-    alter_anim_frames = "|/-\\"
+    # refreshing entire row of both boards. because formatting may be unpredictable otherwise must use both info from both boards.
+    # moving cursor to the right place 
 
+    # generating regular row frame
+    normal_row_frame = "" 
+    # user row
+    normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+    for i in range(0, 10):
+        normal_row_frame += f" {user_board[row][i]} "
+    # space between rows
+    normal_row_frame += "   "
+    # enemy row
+    normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+    for i in range(0, 10):
+        normal_row_frame += f" {enemy_board[row][i]} "
+
+    # generating row frame with hover effect
+    blink_row_frame = ""
+    # user row
+    blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+    for i in range(0, 10):
+        if (i in range(col, col + length)):
+            blink_row_frame += f" {ship[0]} "
+        else:
+            blink_row_frame += f" {user_board[row][i]} "
+    # space between rows
+    blink_row_frame += "   "
+    # enemy row
+    blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+    for i in range(0, 10):
+        blink_row_frame += f" {enemy_board[row][i]} "
+
+    frames = [normal_row_frame, blink_row_frame]
+
+    # cycling through the animation frames
     start_time = time.time()
     while True:
-        for i in range(4):
+        for i in range(2):
             time.sleep(0.5)
             lock.acquire()
             # sys.stdout.write("\r\u00b1[4A\u00b1[0G\u00b1[2K" 
             # + alter_anim_frames[i % len(alter_anim_frames)]
             # + "\u00b1[4B\u00b1[0G")
-            sys.stdout.write("\033[s\r\033[14A" + alter_anim_frames[i % len(alter_anim_frames)]
+            sys.stdout.write(
+            # saving and moving cursor
+            f"\033[s\r\033[{14 - row}A"
+            # writing frame of row
+            + frames[i % len(frames)]
+            # restoring cursor
             + "\033[u")
             sys.stdout.flush()
 
@@ -30,9 +69,17 @@ def run_hover_animation(row: int, col: int, ship: str, length: int, orientation:
             # sys.stdout.write("\u00b1[4A\u00b1[0G\u00b1[2K adsfjdkj\u00b1[4B\u00b1[0G")
             # sys.stdout.flush()
             lock.release()
-
-            if (time.time() - start_time > 10):
-                sys.exit(0)
+            if (exit_flag == True):
+                # making sure it ends on the normal frame
+                sys.stdout.write(
+                # saving and moving cursor
+                f"\033[s\r\033[{14 - row}A"
+                # writing frame of row
+                + frames[0]
+                # restoring cursor
+                + "\033[u")
+                sys.stdout.flush()
+                sys.exit()
 
 # main function
 if __name__ == "__main__":
@@ -95,13 +142,13 @@ ______       _   _   _           _     _\n\
 
 
     # instructions for how to place stuff
-    sys.stdout.write("\u001b[2K'l' or 'r' to rotate left or right respectively.\n"
+    sys.stdout.write("\u001b[2K'l' or 'r' to rotate left or right respectively around pivot. will not rotate if impossilbe.\n"
     "Enter with no input to confirm placement.\n"
     "'A1', 'h10', etc to hover elsewhere.\n")
 
     table_origin_row_offset = 14
 
-    # prompting users to 
+    # prompting users to place ships
     for ship, length in ship_classes.items():
         hover_row = 0
         hover_col = 0
@@ -121,21 +168,27 @@ ______       _   _   _           _     _\n\
             instruction = sys.stdin.readline().replace("\n", "")
             instruction = instruction.replace("\r", "")
 
+            # stopping animation
+            exit_flag = True
+            hover_animation.join()
+            exit_flag = False
+
             # clearing previous prompt and user inpout with white space
             sys.stdout.write(f"\u001b[1A\u001b[2K")
             sys.stdout.flush()
 
             # checking user input
-            if (re.search("^[a-jA-J]([1-9]|10)$", instruction) ): # input is valid.
+            if (re.search("^[a-jA-J]([1-9]|10)$", instruction) ): # input is valid. adding 
                 # why minus by one? we multiply by column and row offsets to get distance from table origin.
                 row_num = int(instruction[1:]) - 1
                 if (ord(instruction[0]) in range(65, 75)):
                     col_num = ord(instruction[0]) - 65
                 else:
                     col_num = ord(instruction[0]) - 97
-                
-                user_board[row_num][col_num] = "0"
-                
+
+                hover_col = col_num 
+                hover_row = row_num
+
                 # refreshing entire row of both boards. because formatting may be unpredictable otherwise must use both info from both boards.
                 # moving cursor to the right place 
                 sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}A\u001b[2K")
@@ -151,7 +204,6 @@ ______       _   _   _           _     _\n\
                     sys.stdout.write(f" {enemy_board[row_num][i]} ")
                 sys.stdout.flush()
 
-                sys.stdout.flush()
                 # moving cursor back to prompt area
                 sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}B\u001b[0G")
                 sys.stdout.flush()
