@@ -2,126 +2,61 @@ import time
 import sys
 import threading 
 import re
+
+hover_lock = threading.Lock()
 # MOST OF THE ITEMS HERE WRITE STUFF TO TERMINAL REGARDLESS. MUCH ASSUMPTIONS ARE MADE
 # AS TO THE LOCATION OF THE CURSOR AT MANY POINTS. PLEASE KEEP TRACK OF THESE ASSUMPTIONS 
 # AND CHANGE THEM AS NEEDED
 
-# this creates a hover effect where the ship blinks over the would-be area. Naturally, it is non-blocking
-# Why a class? because we need a wait to 
-def run_hover_animation(row: int, col: int, ship: str, length: int, orientation: str):
-    # we first generate the row or rows of text of associated with animation frame and then cycle through them. 
-
-    # generating regular row frame
-    normal_row_frame = "" 
-    # user row
-    normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
-    for i in range(0, 10):
-        normal_row_frame += f" {user_board[row][i]} "
-    # space between rows
-    normal_row_frame += "   "
-    # enemy row
-    normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
-    for i in range(0, 10):
-        normal_row_frame += f" {enemy_board[row][i]} "
-
-    # generating row frame with hover effect
-    blink_row_frame = ""
-    # user row
-    blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
-    for i in range(0, 10):
-        # injecting ship into section of row 
-        if (i in range(col, col + length)):
-            # inserting first letter of ship name
-            blink_row_frame += f" {ship[0]} "
-        else:
-            blink_row_frame += f" {user_board[row][i]} "
-
-    # space between rows
-    blink_row_frame += "   "
-    # enemy row
-    blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
-    for i in range(0, 10):
-        blink_row_frame += f" {enemy_board[row][i]} "
-
-    # list used to cycle through
-    frames = [normal_row_frame, blink_row_frame]
-
-
-    # cycling through the animation frames
-    start_time = time.time()
-
-    sys.stdout.write(
-    # saving and moving cursor
-    f"\033[s\r\033[{14 - row}A"
-    # writing frame of row normally len()
-    + frames[i % len(frames)]
-    # restoring cursor
-    + "\033[u")
-    sys.stdout.flush()
-    while True:
-        for i in range(1, 11):
-            # if we need to keep track of more vent threading. Event may be useful
-            # returns True if notified False if timed out
-
-            time.sleep(0.1)
-
-            if (not stop_anim_event.is_set() and ((i % 5) == 0)):
-                sys.stdout.write(
-                # saving and moving cursor
-                f"\033[s\r\033[{14 - row}A"
-                # writing frame of row normally len()
-                + frames[i % len(frames)]
-                # restoring cursor
-                + "\033[u")
-                sys.stdout.flush()
-            elif (stop_anim_event.is_set()):
-                # making sure it ends on the normal frame
-                sys.stdout.write(
-                # saving and moving cursor
-                f"\033[s\r\033[{14 - row}A"
-                # writing frame of row
-                + frames[0]
-                # restoring cursor
-                + "\033[u")
-                sys.stdout.flush()
-                sys.exit()
-
+# this creates a hover effect where the ship blinks over the would-be area. Naturally, it is non-blocking, and thus a thread.
+# Why subclassing? when we are getting user input while running an animation, we run a loop that loops on each user "enter".
+# the end_animation() method via subclassing allows us to create several threads at a time 
+# and terminate them individually without waiting for them to complete
+# locks for flushes because several threads manipulate the console cursor, which *might* lead to unexpected behavior
 class Run_hover_animation(threading.Thread):
     # we first generate the row or rows of text of associated with animation frame and then cycle through them. 
     def __init__(self, row: int, col: int, ship: str, length: int, orientation: str):
         super().__init__()
 
+        # of course set basic attributes
+        self.row = row
+        self.col = col
+        self.length = length
+        self.ship = ship
+        self.orientation = orientation
+
+        # Why generate entire rows? formatting is very weird otherwise
         # generating regular row frame
         normal_row_frame = "" 
         # user row
-        normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+        normal_row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
         for i in range(0, 10):
-            normal_row_frame += f" {user_board[row][i]} "
+            normal_row_frame += f" {user_board[self.row][i]} "
         # space between rows
         normal_row_frame += "   "
         # enemy row
-        normal_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+        normal_row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
         for i in range(0, 10):
-            normal_row_frame += f" {enemy_board[row][i]} "
+            normal_row_frame += f" {enemy_board[self.row ][i]} "
         self.normal_row_frame = normal_row_frame
         
         # generating row frame with hover effect
         blink_row_frame = ""
         # user row
-        blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+        blink_row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
         for i in range(0, 10):
             # injecting ship into section of row 
-            if (i in range(col, col + length)):
+            if (i in range(self.col, self.col + self.length)):
                 # inserting first letter of ship name
-                blink_row_frame += f" {ship[0]} "
+                blink_row_frame += f" \u001b[1m{ship[0]}\u001b[0m "
             else:
-                blink_row_frame += f" {user_board[row][i]} "
+                blink_row_frame += f" {user_board[self.row ][i]} "
         # space between rows
         blink_row_frame += "   "
         # enemy row
-        blink_row_frame += f"\u001b[1m{row + 1}\u001b[0m  "
+        blink_row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
         for i in range(0, 10):
-            blink_row_frame += f" {enemy_board[row][i]} "
+            blink_row_frame += f" {enemy_board[self.row ][i]} "
         self.blink_row_frame = blink_row_frame 
 
         # list used to cycle through for animation
@@ -133,15 +68,10 @@ class Run_hover_animation(threading.Thread):
         # initializing thread
         self.thread = threading.Thread(target=self.run)
 
-        # other attributes
-        self.row = row
-        self.col = col
-        self.length = length
-        self.ship = ship
-        self.orientation = orientation
-
+    # note that run overloading specifically thread subclasses: https://docs.python.org/3/library/threading.html
     def run(self):
         # write first before animation loop starts to make hover startup fast
+        hover_lock.acquire()
         sys.stdout.write(
         # saving and moving cursor
         f"\033[s\r\033[{14 - self.row}A"
@@ -150,39 +80,76 @@ class Run_hover_animation(threading.Thread):
         # restoring cursor
         + "\033[u")
         sys.stdout.flush()
+        hover_lock.release()
         # cycling through the animation frames
         start_time = time.time()
 
+        # variable for determining which frame to put
+        cur_frame = 0
+
+        # changing up the range and the modulo for the write determines time between each frame.
         while True:
             for i in range(1, 11):
                 # if we need to keep track of more vent threading. Event may be useful
                 # returns True if notified False if timed out
 
+                # any sleep time below 0.1 causes shenanigans 
                 time.sleep(0.1)
 
-                if (not self.stop_anim_event.is_set() and i % 5 == 0):
+                if (not self.stop_anim_event.is_set() and (i % 5 == 0)):
+                    hover_lock.acquire()
                     sys.stdout.write(
                     # saving and moving cursor
                     f"\033[s\r\033[{14 - self.row}A"
                     # writing frame of row
-                    + self.frames[i % len(self.frames)]
+                    + self.frames[cur_frame]
                     # restoring cursor
                     + "\033[u")
                     sys.stdout.flush()
+                    hover_lock.release()
+                    # determining next frame
+                    cur_frame = (cur_frame + 1) % 2
                 elif (self.stop_anim_event.is_set()):
+                    # user board to make sure things are up to date
+                    row_frame = "" 
+                    # user row
+                    row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
+                    for i in range(0, 10):
+                        row_frame += f" {user_board[self.row][i]} "
+                    # space between rows
+                    row_frame += "   "
+                    # enemy row
+                    row_frame += f"\u001b[1m{self.row + 1}\u001b[0m  "
+                    for i in range(0, 10):
+                        row_frame += f" {enemy_board[self.row ][i]} "
+                    row_frame = row_frame
+
+                    hover_lock.acquire()
                     # making sure it ends on the normal frame
                     sys.stdout.write(
                     # saving and moving cursor
                     f"\033[s\r\033[{14 - self.row}A"
                     # writing frame of row
-                    + self.frames[0]
+                    + row_frame
                     # restoring cursor
                     + "\033[u")
                     sys.stdout.flush()
+                    hover_lock.release()
                     sys.exit()
 
     def end_animation(self):
         self.stop_anim_event.set()
+
+class Board():
+    def __init__(self):
+        print("bruh")
+    
+    def print_row():
+        print("bruh")
+
+    def add_ship():
+        print("bruh")
+
 
 # main function
 if __name__ == "__main__":
@@ -258,8 +225,10 @@ ______       _   _   _           _     _\n\
 
         while True:
             # prompt user. we must move cursor to beginning despite newline in previous write otherwise format is off.
-            sys.stdout.write((f"\u001b[2K\u001b[0GPlace \u001b[34m{ship}\u001b[0m of length \u001b[34m{length}\u001b[0m: "))
+            hover_lock.acquire()
+            sys.stdout.write(f"\u001b[2K\u001b[0GPlace \u001b[34m{ship}\u001b[0m of length \u001b[34m{length}\u001b[0m: ")
             sys.stdout.flush()
+            hover_lock.release()
 
             # starting hover animation
             hover_animation = Run_hover_animation(hover_row, hover_col, ship, length, "r")
@@ -271,14 +240,13 @@ ______       _   _   _           _     _\n\
             instruction = sys.stdin.readline().replace("\n", "")
             instruction = instruction.replace("\r", "")
 
-            # stopping animation
-            hover_animation.end_animation()
-
             # clearing previous prompt and user inpout with white space
+            hover_lock.acquire()
             sys.stdout.write(f"\u001b[1A\u001b[2K")
             sys.stdout.flush()
+            hover_lock.release()
 
-            # checking user input
+            # checking user input. we end animation after each conditional as it relies on info processed here
             if (re.search("^[a-jA-J]([1-9]|10)$", instruction) ): # input is valid. adding 
                 # why minus by one? we multiply by column and row offsets to get distance from table origin.
                 row_num = int(instruction[1:]) - 1
@@ -289,31 +257,22 @@ ______       _   _   _           _     _\n\
 
                 hover_col = col_num 
                 hover_row = row_num
+                # stopping blinking animation
+                hover_animation.end_animation()
+            # confirms that an item is put in place
             elif (instruction == ""):
-                # refreshing entire row of both boards. because formatting may be unpredictable otherwise must use both info from both boards.
-                # moving cursor to the right place 
-                # sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}A\u001b[2K")
-
-                # generating actual user row. all these row accesses might be inefficient, but it's simple 
-                # sys.stdout.write(f"\u001b[1m{row_num + 1}\u001b[0m  ")
-                # for i in range(0, 10):
-                #     sys.stdout.write(f" {user_board[row_num][i]} ")
-                # sys.stdout.write(f"   ")
-                # # enemy row
-                # sys.stdout.write(f"\u001b[1m{row_num + 1}\u001b[0m  ")
-                # for i in range(0, 10):
-                #     sys.stdout.write(f" {enemy_board[row_num][i]} ")
-                # sys.stdout.flush()
-
-                # moving cursor back to prompt area
-                # sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}B\u001b[0G")
-                # sys.stdout.flush()
+                # changing user board list 
+                for col in range(length):
+                    user_board[hover_row][hover_col + col] = ship[0]
+                # note that hover animation applies places ship as well.
+                hover_animation.end_animation()
                 break
             elif (instruction == "x"):
                 break
-        
-        if (instruction == "x"):
-            break
+            # stopping blinking animation
+    
+    # making sure that end animation does not mess stuff up due to threading and cursor positioning
+    hover_animation.join()
 
     # clearing previous input
     sys.stdout.write(f"\u001b[1A\u001b[2K\u001b[1A\u001b[2K\u001b[1A\u001b[2K")
@@ -352,7 +311,7 @@ ______       _   _   _           _     _\n\
             # moving cursor to the right place 
             sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}A\u001b[2K")
 
-            # generating actual user row. all these row accesses might be inefficient, but I don't care. 
+            # generating actual user row. all these row accesses might be inefficient, but I can't be arsed at this point
             sys.stdout.write(f"\u001b[1m{row_num + 1}\u001b[0m  ")
             for i in range(0, 10):
                 sys.stdout.write(f" {user_board[row_num][i]} ")
@@ -361,14 +320,14 @@ ______       _   _   _           _     _\n\
             sys.stdout.write(f"\u001b[1m{row_num + 1}\u001b[0m  ")
             for i in range(0, 10):
                 sys.stdout.write(f" {enemy_board[row_num][i]} ")
-            sys.stdout.flush()
 
-            sys.stdout.flush()
             # moving cursor back to prompt area
             sys.stdout.write(f"\u001b[{table_origin_row_offset - row_num}B\u001b[0G")
             sys.stdout.flush()
         elif (instruction == "\n"):
+            
             print("\n\n accepted")
+            break
         elif (instruction == "x"):
             break 
         # get user input for board
